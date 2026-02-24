@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pelaporan - Officer Performance Evaluation | Pertamina Kalimantan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        :root {
+            --pertamina-red: #E31E24;
+            --forest-green: #1B4D3E;
+            --jungle-green: #2D6A4F;
+            --river-blue: #0891B2;
+            --dayak-gold: #D97706;
+            --earth-brown: #92400E;
+            --leaf-light: #34D399;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #0f172a 100%);
+            background-attachment: fixed;
+            color: #ecfdf5;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Borneo Forest Pattern Overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(45, 106, 79, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(8, 145, 178, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(217, 119, 6, 0.2) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Leaf Pattern */
+        .leaf-pattern {
+            position: absolute;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: rgba(6, 78, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #34D399 0%, #0891B2 50%, #F59E0B 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pertamina-gradient {
+            background: linear-gradient(135deg, #E31E24 0%, #991B1B 100%);
+        }
+
+        .borneo-gradient {
+            background: linear-gradient(135deg, #065F46 0%, #0891B2 100%);
+        }
+
+        .sidebar-item {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, var(--leaf-light), transparent);
+            transition: width 0.3s ease;
+        }
+
+        .sidebar-item:hover::before, .sidebar-item.active::before {
+            width: 100%;
+        }
+
+        .sidebar-item:hover, .sidebar-item.active {
+            background: rgba(45, 106, 79, 0.5);
+            border-left: 3px solid #34D399;
+            padding-left: 1.5rem;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+            border: 1px solid rgba(52, 211, 153, 0.1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(52, 211, 153, 0.2);
+            border-color: rgba(52, 211, 153, 0.4);
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-draft { background: rgba(217, 119, 6, 0.2); color: #FBBF24; border: 1px solid rgba(217, 119, 6, 0.3); }
+        .status-review { background: rgba(8, 145, 178, 0.2); color: #22D3EE; border: 1px solid rgba(8, 145, 178, 0.3); }
+        .status-approved { background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #064e3b; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #059669; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #34D399; 
+        }
+
+        .form-input {
+            background: rgba(6, 78, 59, 0.8);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            color: white;
+            transition: all 0.3s;
+        }
+        .form-input:focus {
+            border-color: #34D399;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2);
+        }
+
+        /* Dayak Pattern Border */
+        .dayak-border {
+            position: relative;
+        }
+        .dayak-border::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: repeating-linear-gradient(
+                90deg,
+                #D97706 0px,
+                #D97706 10px,
+                #92400E 10px,
+                #92400E 20px,
+                #1B4D3E 20px,
+                #1B4D3E 30px
+            );
+        }
+
+        /* Orangutan Icon Style */
+        .icon-box {
+            background: linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(27, 77, 62, 0.4));
+            border: 1px solid rgba(217, 119, 6, 0.3);
+        }
+
+        /* River Flow Animation */
+        @keyframes flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .river-gradient {
+            background: linear-gradient(90deg, #0891B2, #06B6D4, #0891B2);
+            background-size: 200% 200%;
+            animation: flow 3s ease infinite;
+        }
+
+        /* Tree Ring Effect */
+        .tree-ring {
+            position: relative;
+        }
+        .tree-ring::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            padding: 2px;
+            background: linear-gradient(135deg, #34D399, #059669, #D97706);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex overflow-hidden">
+
+    <!-- Decorative Elements -->
+    <div class="leaf-pattern top-20 left-10 text-6xl text-emerald-500 rotate-45">🌿</div>
+    <div class="leaf-pattern top-40 right-20 text-4xl text-teal-600 -rotate-12">🍃</div>
+    <div class="leaf-pattern bottom-20 left-20 text-5xl text-amber-600 rotate-12">🌴</div>
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-gradient-to-b from-slate-900 via-emerald-950 to-slate-900 border-r border-emerald-800/50 flex flex-col h-screen fixed left-0 top-0 z-50 shadow-2xl">
+        <div class="p-6 dayak-border bg-gradient-to-r from-emerald-900/50 to-transparent">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center shadow-lg border-2 border-amber-500/50 tree-ring">
+                    <i class="fas fa-fire text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl leading-tight text-white tracking-wide">PERTAMINA</h1>
+                    <p class="text-xs text-emerald-400 font-semibold tracking-wider">PATRA NIAGA</p>
+                    <p class="text-[10px] text-amber-400 mt-0.5">REGIONAL KALIMANTAN</p>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center gap-2 text-xs text-emerald-300/80">
+                <i class="fas fa-map-marker-alt text-amber-500"></i>
+                <span>Balikpapan, East Kalimantan</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-6">
+            <div class="px-6 mb-3 text-xs font-bold text-emerald-600 uppercase tracking-wider">Menu Utama</div>
+            
+            <a href="#dashboard" class="sidebar-item active flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('dashboard')">
+                <i class="fas fa-chart-line w-5 text-emerald-400"></i>
+                <span>Dashboard</span>
+                <i class="fas fa-chevron-right ml-auto text-xs opacity-0 transition-opacity"></i>
+            </a>
+            
+            <a href="#continuous-improvement" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('continuous-improvement')">
+                <i class="fas fa-leaf w-5 text-green-400"></i>
+                <span>Continuous Improvement</span>
+            </a>
+            
+            <a href="#kerjasama" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('kerjasama')">
+                <i class="fas fa-handshake w-5 text-amber-400"></i>
+                <span>Perjanjian Kerjasama</span>
+            </a>
+            
+            <a href="#risk-register" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('risk-register')">
+                <i class="fas fa-shield-halved w-5 text-cyan-400"></i>
+                <span>Risk Register</span>
+            </a>
+            
+            <a href="#target-kinerja" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('target-kinerja')">
+                <i class="fas fa-mountain w-5 text-amber-500"></i>
+                <span>Target Kinerja (KPI)</span>
+            </a>
+
+            <div class="px-6 mt-8 mb-3 text-xs font-bold text-emerald-600 uppercase tracking-wider">Laporan & Dokumen</div>
+            
+            <a href="#laporan" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('laporan')">
+                <i class="fas fa-file-alt w-5 text-emerald-400"></i>
+                <span>Laporan Evaluasi</span>
+            </a>
+
+            <a href="#dokumen" class="sidebar-item flex items-center gap-3 px-6 py-3.5 text-sm text-emerald-100" onclick="showSection('dokumen')">
+                <i class="fas fa-folder-open w-5 text-amber-400"></i>
+                <span>Arsip Borneo</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-emerald-800/50 bg-emerald-950/30">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-emerald-900/50 to-emerald-800/30 border border-emerald-700/30">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center border-2 border-emerald-600">
+                    <i class="fas fa-user text-white"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-emerald-100 truncate">Officer Performance</p>
+                    <p class="text-xs text-emerald-400 truncate">S&D Kalimantan Region</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 ml-72 h-screen overflow-y-auto relative">
+        
+        <!-- Header -->
+        <header class="sticky top-0 z-40 glass-panel border-b border-emerald-700/50 px-8 py-4 flex justify-between items-center backdrop-blur-xl">
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-2 text-emerald-400 text-sm">
+                    <i class="fas fa-home"></i>
+                    <span>/</span>
+                    <span class="text-amber-400">Kalimantan</span>
+                    <span>/</span>
+                    <span id="breadcrumb-title">Dashboard</span>
+                </div>
+                <div class="md:hidden">
+                    <h2 class="text-xl font-bold gradient-text" id="page-title-mobile">Dashboard</h2>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-3 px-4 py-2 rounded-full bg-emerald-900/50 border border-emerald-700/50">
+                    <i class="fas fa-cloud-sun text-amber-400"></i>
+                    <span class="text-sm text-emerald-200">30°C • Balikpapan</span>
+                </div>
+                <button class="p-2.5 rounded-full bg-emerald-900/50 hover:bg-emerald-800/50 transition relative border border-emerald-700/50">
+                    <i class="fas fa-bell text-emerald-400"></i>
+                    <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-emerald-900"></span>
+                </button>
+                <button class="px-5 py-2.5 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 rounded-full text-sm font-semibold transition flex items-center gap-2 shadow-lg shadow-red-900/30 border border-red-500/30">
+                    <i class="fas fa-plus"></i> Laporan Baru
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 max-w-7xl mx-auto">
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section-content animate-fade-in">
+                <!-- Welcome Banner -->
+                <div class="mb-8 p-8 rounded-3xl bg-gradient-to-r from-emerald-900/80 via-emerald-800/60 to-amber-900/40 border border-emerald-600/30 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 to-transparent rounded-full blur-3xl"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">BORNEO OPERATIONS</span>
+                        </div>
+                        <h2 class="text-3xl font-bold text-white mb-2">Selamat Datang di Sistem Pelaporan</h2>
+                        <p class="text-emerald-200 max-w-2xl">Monitoring kinerja Supply & Distribution Kalimantan dengan semangat kelestarian hutan dan kemajuan industri energi.</p>
+                    </div>
+                    <div class="absolute bottom-4 right-8 text-6xl opacity-20">🦧</div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="glass-panel rounded-2xl p-6 card-hover border-l-4 border-emerald-500 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-8xl opacity-5">🌿</div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <p class="text-emerald-400 text-sm font-medium">Program CI Aktif</p>
+                                <h3 class="text-3xl font-bold mt-1 text-white">12</h3>
+                            </div>
+                            <div class="p-3 bg-emerald-500/20 rounded-xl border border-emerald-500/30">
+                                <i class="fas fa-seedling text-emerald-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm relative z-10">
+                            <span class="text-emerald-400 font-semibold"><i class="fas fa-arrow-up"></i> 8%</span>
+                            <span class="text-emerald-600/80">vs bulan lalu</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-6 card-hover border-l-4 border-cyan-500 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-8xl opacity-5">🌊</div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <p class="text-cyan-400 text-sm font-medium">Mitra Sungai & Logistik</p>
+                                <h3 class="text-3xl font-bold mt-1 text-white">24</h3>
+                            </div>
+                            <div class="p-3 bg-cyan-500/20 rounded-xl border border-cyan-500/30">
+                                <i class="fas fa-water text-cyan-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm relative z-10">
+                            <span class="text-cyan-400 font-semibold"><i class="fas fa-plus"></i> 3 baru</span>
+                            <span class="text-cyan-600/80">di Kalimantan</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-6 card-hover border-l-4 border-amber-500 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-8xl opacity-5">🛡️</div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <p class="text-amber-400 text-sm font-medium">Risk Hutan & Operasi</p>
+                                <h3 class="text-3xl font-bold mt-1 text-white">8</h3>
+                            </div>
+                            <div class="p-3 bg-amber-500/20 rounded-xl border border-amber-500/30">
+                                <i class="fas fa-exclamation-triangle text-amber-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm relative z-10">
+                            <span class="text-amber-400 font-semibold">2 High Priority</span>
+                            <span class="text-amber-600/80">perlu mitigasi</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl p-6 card-hover border-l-4 border-red-500 relative overflow-hidden">
+                        <div class="absolute -right-4 -top-4 text-8xl opacity-5">⛽</div>
+                        <div class="flex justify-between items-start mb-4 relative z-10">
+                            <div>
+                                <p class="text-red-400 text-sm font-medium">KPI Achievement</p>
+                                <h3 class="text-3xl font-bold mt-1 text-white">94%</h3>
+                            </div>
+                            <div class="p-3 bg-red-500/20 rounded-xl border border-red-500/30">
+                                <i class="fas fa-fire text-red-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="w-full bg-emerald-900/50 rounded-full h-2.5 mt-2 relative z-10 border border-emerald-800">
+                            <div class="bg-gradient-to-r from-red-500 to-amber-500 h-2.5 rounded-full" style="width: 94%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="glass-panel rounded-2xl p-6 border border-emerald-700/30">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-emerald-100 flex items-center gap-2">
+                                <i class="fas fa-chart-area text-emerald-400"></i>
+                                Tren Continuous Improvement
+                            </h3>
+                            <span class="text-xs text-emerald-600">2024</span>
+                        </div>
+                        <canvas id="ciChart" height="250"></canvas>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-6 border border-emerald-700/30">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-emerald-100 flex items-center gap-2">
+                                <i class="fas fa-shield-alt text-amber-400"></i>
+                                Peta Risk Level Kalimantan
+                            </h3>
+                            <span class="text-xs text-amber-600">Regional View</span>
+                        </div>
+                        <canvas id="riskChart" height="250"></canvas>
+                    </div>
+                </div>
+
+                <!-- Regional Activity Map -->
+                <div class="glass-panel rounded-2xl p-6 border border-emerald-700/30 mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-emerald-100 flex items-center gap-2">
+                            <i class="fas fa-map-marked-alt text-amber-400"></i>
+                            Aktivitas per Wilayah Kalimantan
+                        </h3>
+                        <div class="flex gap-2">
+                            <span class="px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 text-xs border border-emerald-700">Kalimantan Timur</span>
+                            <span class="px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 text-xs border border-emerald-700">Kalimantan Selatan</span>
+                            <span class="px-3 py-1 rounded-full bg-emerald-900/50 text-emerald-400 text-xs border border-emerald-700">Kalimantan Tengah</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 rounded-xl border border-emerald-700/30">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                                    <i class="fas fa-industry text-amber-400"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-emerald-100">Balikpapan</h4>
+                                    <p class="text-xs text-emerald-500">Fuel Terminal</p>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-emerald-400/80">Throughput</span>
+                                    <span class="text-emerald-300">98%</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-emerald-400/80">Safety</span>
+                                    <span class="text-emerald-300">100%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-gradient-to-br from-emerald-900/40 to-emerald-800/20 rounded-xl border border-emerald-700/30">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-500
